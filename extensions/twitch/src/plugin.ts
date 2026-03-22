@@ -1,23 +1,23 @@
 /**
- * Twitch channel plugin for Moltbot.
+ * Twitch channel plugin for OpenClaw.
  *
  * Main plugin export combining all adapters (outbound, actions, status, gateway).
  * This is the primary entry point for the Twitch channel integration.
  */
 
-import type { MoltbotConfig } from "clawdbot/plugin-sdk";
-import { buildChannelConfigSchema } from "clawdbot/plugin-sdk";
+import { buildPassiveProbedChannelStatusSummary } from "openclaw/plugin-sdk/extension-shared";
+import type { OpenClawConfig } from "../api.js";
+import { buildChannelConfigSchema } from "../api.js";
 import { twitchMessageActions } from "./actions.js";
+import { removeClientManager } from "./client-manager-registry.js";
 import { TwitchConfigSchema } from "./config-schema.js";
 import { DEFAULT_ACCOUNT_ID, getAccountConfig, listAccountIds } from "./config.js";
-import { twitchOnboardingAdapter } from "./onboarding.js";
 import { twitchOutbound } from "./outbound.js";
 import { probeTwitch } from "./probe.js";
 import { resolveTwitchTargets } from "./resolver.js";
+import { twitchSetupAdapter, twitchSetupWizard } from "./setup-surface.js";
 import { collectTwitchStatusIssues } from "./status.js";
-import { removeClientManager } from "./client-manager-registry.js";
 import { resolveTwitchToken } from "./token.js";
-import { isAccountConfigured } from "./utils/twitch.js";
 import type {
   ChannelAccountSnapshot,
   ChannelCapabilities,
@@ -28,12 +28,13 @@ import type {
   ChannelResolveResult,
   TwitchAccountConfig,
 } from "./types.js";
+import { isAccountConfigured } from "./utils/twitch.js";
 
 /**
  * Twitch channel plugin.
  *
  * Implements the ChannelPlugin interface to provide Twitch chat integration
- * for Moltbot. Supports message sending, receiving, access control, and
+ * for OpenClaw. Supports message sending, receiving, access control, and
  * status monitoring.
  */
 export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
@@ -50,13 +51,14 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
     aliases: ["twitch-chat"],
   } satisfies ChannelMeta,
 
-  /** Onboarding adapter */
-  onboarding: twitchOnboardingAdapter,
+  /** Setup wizard surface */
+  setup: twitchSetupAdapter,
+  setupWizard: twitchSetupWizard,
 
   /** Pairing configuration */
   pairing: {
     idLabel: "twitchUserId",
-    normalizeAllowEntry: (entry) => entry.replace(/^(twitch:)?user:?/i, ""),
+    normalizeAllowEntry: (entry) => entry.trim().replace(/^(twitch:)?user:?/i, ""),
     notifyApproval: async ({ id }) => {
       // Note: Twitch doesn't support DMs from bots, so pairing approval is limited
       // We'll log the approval instead
@@ -75,10 +77,10 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
   /** Account configuration management */
   config: {
     /** List all configured account IDs */
-    listAccountIds: (cfg: MoltbotConfig): string[] => listAccountIds(cfg),
+    listAccountIds: (cfg: OpenClawConfig): string[] => listAccountIds(cfg),
 
     /** Resolve an account config by ID */
-    resolveAccount: (cfg: MoltbotConfig, accountId?: string | null): TwitchAccountConfig => {
+    resolveAccount: (cfg: OpenClawConfig, accountId?: string | null): TwitchAccountConfig => {
       const account = getAccountConfig(cfg, accountId ?? DEFAULT_ACCOUNT_ID);
       if (!account) {
         // Return a default/empty account if not configured
@@ -96,7 +98,7 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
     defaultAccountId: (): string => DEFAULT_ACCOUNT_ID,
 
     /** Check if an account is configured */
-    isConfigured: (_account: unknown, cfg: MoltbotConfig): boolean => {
+    isConfigured: (_account: unknown, cfg: OpenClawConfig): boolean => {
       const account = getAccountConfig(cfg, DEFAULT_ACCOUNT_ID);
       const tokenResolution = resolveTwitchToken(cfg, { accountId: DEFAULT_ACCOUNT_ID });
       return account ? isAccountConfigured(account, tokenResolution.token) : false;
@@ -130,11 +132,11 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
       kind,
       runtime,
     }: {
-      cfg: MoltbotConfig;
+      cfg: OpenClawConfig;
       accountId?: string | null;
       inputs: string[];
       kind: ChannelResolveKind;
-      runtime: import("../../../src/runtime.js").RuntimeEnv;
+      runtime: import("openclaw/plugin-sdk/runtime-env").RuntimeEnv;
     }): Promise<ChannelResolveResult[]> => {
       const account = getAccountConfig(cfg, accountId ?? DEFAULT_ACCOUNT_ID);
 
@@ -169,15 +171,8 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
     },
 
     /** Build channel summary from snapshot */
-    buildChannelSummary: ({ snapshot }: { snapshot: ChannelAccountSnapshot }) => ({
-      configured: snapshot.configured ?? false,
-      running: snapshot.running ?? false,
-      lastStartAt: snapshot.lastStartAt ?? null,
-      lastStopAt: snapshot.lastStopAt ?? null,
-      lastError: snapshot.lastError ?? null,
-      probe: snapshot.probe,
-      lastProbeAt: snapshot.lastProbeAt ?? null,
-    }),
+    buildChannelSummary: ({ snapshot }: { snapshot: ChannelAccountSnapshot }) =>
+      buildPassiveProbedChannelStatusSummary(snapshot),
 
     /** Probe account connection */
     probeAccount: async ({
@@ -198,7 +193,7 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
       probe,
     }: {
       account: TwitchAccountConfig;
-      cfg: MoltbotConfig;
+      cfg: OpenClawConfig;
       runtime?: ChannelAccountSnapshot;
       probe?: unknown;
     }): ChannelAccountSnapshot => {
@@ -231,7 +226,7 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
   gateway: {
     /** Start an account connection */
     startAccount: async (ctx): Promise<void> => {
-      const account = ctx.account as TwitchAccountConfig;
+      const account = ctx.account;
       const accountId = ctx.accountId;
 
       ctx.setStatus?.({
@@ -256,7 +251,7 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
 
     /** Stop an account connection */
     stopAccount: async (ctx): Promise<void> => {
-      const account = ctx.account as TwitchAccountConfig;
+      const account = ctx.account;
       const accountId = ctx.accountId;
 
       // Disconnect and remove client manager from registry
