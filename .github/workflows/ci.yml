@@ -18,7 +18,7 @@ jobs:
   # Lint and format always run. Fail-safe: if detection fails, run everything.
   docs-scope:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.check.outputs.docs_only }}
       docs_changed: ${{ steps.check.outputs.docs_changed }}
@@ -45,7 +45,7 @@ jobs:
   changed-scope:
     needs: [docs-scope]
     if: needs.docs-scope.outputs.docs_only != 'true'
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     outputs:
       run_node: ${{ steps.scope.outputs.run_node }}
       run_macos: ${{ steps.scope.outputs.run_macos }}
@@ -83,7 +83,7 @@ jobs:
   changed-extensions:
     needs: [docs-scope, changed-scope]
     if: needs.docs-scope.outputs.docs_only != 'true' && needs.changed-scope.outputs.run_node == 'true'
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     outputs:
       has_changed_extensions: ${{ steps.changed.outputs.has_changed_extensions }}
       changed_extensions_matrix: ${{ steps.changed.outputs.changed_extensions_matrix }}
@@ -128,7 +128,7 @@ jobs:
   build-artifacts:
     needs: [docs-scope, changed-scope]
     if: github.event_name == 'push' && needs.docs-scope.outputs.docs_only != 'true' && needs.changed-scope.outputs.run_node == 'true'
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -162,7 +162,7 @@ jobs:
   release-check:
     needs: [docs-scope, build-artifacts]
     if: github.event_name == 'push' && needs.docs-scope.outputs.docs_only != 'true'
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -187,7 +187,7 @@ jobs:
   checks:
     needs: [docs-scope, changed-scope, build-artifacts]
     if: always() && needs.docs-scope.outputs.docs_only != 'true' && needs.changed-scope.outputs.run_node == 'true' && (github.event_name != 'push' || needs.build-artifacts.result == 'success')
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -282,7 +282,7 @@ jobs:
     name: "extension-fast"
     needs: [docs-scope, changed-scope, changed-extensions]
     if: needs.docs-scope.outputs.docs_only != 'true' && needs.changed-scope.outputs.run_node == 'true' && needs.changed-extensions.outputs.has_changed_extensions == 'true'
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.changed-extensions.outputs.changed_extensions_matrix) }}
@@ -308,7 +308,7 @@ jobs:
     name: "check"
     needs: [docs-scope, changed-scope]
     if: needs.docs-scope.outputs.docs_only != 'true' && needs.changed-scope.outputs.run_node == 'true'
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -331,7 +331,7 @@ jobs:
     name: "check-additional"
     needs: [docs-scope, changed-scope]
     if: needs.docs-scope.outputs.docs_only != 'true' && needs.changed-scope.outputs.run_node == 'true'
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -421,7 +421,7 @@ jobs:
     name: "build-smoke"
     needs: [docs-scope, changed-scope, build-artifacts]
     if: always() && needs.docs-scope.outputs.docs_only != 'true' && needs.changed-scope.outputs.run_node == 'true' && (github.event_name != 'push' || needs.build-artifacts.result == 'success')
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -461,7 +461,7 @@ jobs:
   check-docs:
     needs: [docs-scope]
     if: needs.docs-scope.outputs.docs_changed == 'true'
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -480,7 +480,7 @@ jobs:
   skills-python:
     needs: [docs-scope, changed-scope]
     if: needs.docs-scope.outputs.docs_only != 'true' && (github.event_name == 'push' || needs.changed-scope.outputs.run_skills_python == 'true')
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -505,7 +505,7 @@ jobs:
 
   secrets:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -583,7 +583,7 @@ jobs:
   checks-windows:
     needs: [docs-scope, changed-scope, build-artifacts]
     if: always() && needs.docs-scope.outputs.docs_only != 'true' && needs.changed-scope.outputs.run_windows == 'true' && (github.event_name != 'push' || needs.build-artifacts.result == 'success')
-    runs-on: blacksmith-32vcpu-windows-2025
+    runs-on: windows-latest
     timeout-minutes: 45
     env:
       NODE_OPTIONS: --max-old-space-size=6144
@@ -959,7 +959,7 @@ jobs:
   android:
     needs: [docs-scope, changed-scope]
     if: needs.docs-scope.outputs.docs_only != 'true' && needs.changed-scope.outputs.run_android == 'true'
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
