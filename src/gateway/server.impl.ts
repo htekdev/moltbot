@@ -587,6 +587,7 @@ export async function startGatewayServer(
     httpServers,
     httpBindHosts,
     wss,
+    preauthConnectionBudget,
     clients,
     broadcast,
     broadcastToConnIds,
@@ -874,6 +875,7 @@ export async function startGatewayServer(
   attachGatewayWsHandlers({
     wss,
     clients,
+    preauthConnectionBudget,
     port,
     gatewayHost: bindHost ?? undefined,
     canvasHostEnabled: Boolean(canvasHost),

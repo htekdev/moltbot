@@ -1,5 +1,6 @@
 import type { Server as HttpServer } from "node:http";
 import { WebSocketServer } from "ws";
+import { createPreauthConnectionBudget, type PreauthConnectionBudget } from "./server/preauth-connection-budget.js";
 import { CANVAS_HOST_PATH } from "../canvas-host/a2ui.js";
 import { type CanvasHostHandler, createCanvasHostHandler } from "../canvas-host/server.js";
 import type { CliDeps } from "../cli/deps.js";
@@ -74,6 +75,7 @@ export async function createGatewayRuntimeState(params: {
   httpServers: HttpServer[];
   httpBindHosts: string[];
   wss: WebSocketServer;
+  preauthConnectionBudget: PreauthConnectionBudget;
   clients: Set<GatewayWsClient>;
   broadcast: GatewayBroadcastFn;
   broadcastToConnIds: GatewayBroadcastToConnIdsFn;
@@ -193,12 +195,14 @@ export async function createGatewayRuntimeState(params: {
     noServer: true,
     maxPayload: MAX_PREAUTH_PAYLOAD_BYTES,
   });
+  const preauthConnectionBudget = createPreauthConnectionBudget();
   for (const server of httpServers) {
     attachGatewayUpgradeHandler({
       httpServer: server,
       wss,
       canvasHost,
       clients,
+      preauthConnectionBudget,
       resolvedAuth: params.resolvedAuth,
       rateLimiter: params.rateLimiter,
     });
@@ -221,6 +225,7 @@ export async function createGatewayRuntimeState(params: {
     httpServers,
     httpBindHosts,
     wss,
+    preauthConnectionBudget,
     clients,
     broadcast,
     broadcastToConnIds,
